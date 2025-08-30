@@ -20,6 +20,7 @@ resource "google_cloud_run_v2_service" "embedding_service" {
       max_instance_count = 5
     }
     service_account = var.embedding_sa_email
+    timeout = "300s"
     
   }
 
