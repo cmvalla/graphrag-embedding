@@ -1,0 +1,42 @@
+resource "google_cloud_run_v2_service" "embedding_service" {
+  name     = "graphrag-embedding"
+  location = var.gcp_location
+  project  = var.gcp_project
+
+  template {
+    containers {
+      image = "europe-west1-docker.pkg.dev/${var.gcp_project}/my-docker-repo/graphrag-embedding:${var.git_tag}"
+      ports {
+        container_port = 8080
+      }
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "2Gi"
+        }
+      }
+    }
+    scaling {
+      max_instance_count = 5
+    }
+    service_account = var.embedding_service_account_email
+    timeout_seconds = 300
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+
+  ingress = "INGRESS_TRAFFIC_ALL"
+
+  depends_on = [
+    google_project_service.run_api,
+  ]
+}
+
+resource "google_project_service" "run_api" {
+  project = var.gcp_project
+  service = "run.googleapis.com"
+  disable_on_destroy = false
+}
