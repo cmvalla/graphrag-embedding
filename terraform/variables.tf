@@ -18,3 +18,8 @@ variable "embedding_service_account_email" {
   description = "The email of the service account for the embedding service."
   type        = string
 }
+
+variable "image_url" {
+  description = "The URL of the Docker image."
+  type        = string
+}
