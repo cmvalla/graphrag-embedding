@@ -2,6 +2,7 @@ steps:
 # Step 1: Build, Cache, and Push
 - name: '${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/gcp-terraform-build:latest'
   id: build-and-push
+  entrypoint: bash
   args:
   - '-c'
   - |
@@ -21,7 +22,7 @@ steps:
 # Step 2A: Deploy the service
 - name: '${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/gcp-terraform-build:latest'
   id: deploy
-  entrypoint: sh
+  entrypoint: bash
   args:
   - '-c'
   - |
