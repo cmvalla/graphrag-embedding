@@ -1,11 +1,11 @@
 resource "google_cloud_run_v2_service" "embedding_service" {
   name     = "graphrag-embedding"
-  location = var.gcp_location
-  project  = var.gcp_project
+  location = var.location
+  project  = var.project_id
 
   template {
     containers {
-      image = "europe-west1-docker.pkg.dev/${var.gcp_project}/my-docker-repo/graphrag-embedding:${var.git_tag}"
+      image = "europe-west1-docker.pkg.dev/${var.project_id}/my-docker-repo/graphrag-embedding:${var.git_tag}"
       ports {
         container_port = 8080
       }
@@ -19,7 +19,7 @@ resource "google_cloud_run_v2_service" "embedding_service" {
     scaling {
       max_instance_count = 5
     }
-    service_account = var.embedding_service_account_email
+    service_account = var.embedding_sa_email
     timeout_seconds = 300
   }
 
@@ -36,7 +36,7 @@ resource "google_cloud_run_v2_service" "embedding_service" {
 }
 
 resource "google_project_service" "run_api" {
-  project = var.gcp_project
+  project = var.project_id
   service = "run.googleapis.com"
   disable_on_destroy = false
 }
