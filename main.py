@@ -13,7 +13,7 @@ def embed(request):
     global embedding_model
     if embedding_model is None:
         logging.info("Loading embedding model...")
-        embedding_model = SentenceTransformer('/app/model')
+        embedding_model = SentenceTransformer('/app/model', device='cpu')
         logging.info("Embedding model loaded successfully.")
 
     request_json = request.get_json(silent=True)
