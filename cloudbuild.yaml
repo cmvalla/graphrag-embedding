@@ -7,7 +7,73 @@ steps:
     - '-c'
     - |
       git fetch --depth=2
-      if git diff --name-only HEAD~1 HEAD | grep -qE '^ (main.py|requirements.txt); then
+      if git diff --name-only HEAD~1 HEAD | grep -qE '^(main.py|requirements.txt)
+
+# Step 1: Build, Cache, and Push (only if changes were detected)
+- name: '${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/gcp-terraform-build:latest'
+  id: 'build-and-push'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      if [ "$(cat /workspace/tag)" != "latest" ]; then
+        # Pull the latest image to use as a cache source (fail gracefully if it doesn't exist)
+        docker pull ${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/${_IMAGE_NAME}:latest || true
+
+        # Build the new image, using the pulled image as a cache
+        docker build \
+          --cache-from ${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/${_IMAGE_NAME}:latest \
+          --tag ${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/${_IMAGE_NAME}:$(cat /workspace/tag) \
+          --tag ${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/${_IMAGE_NAME}:latest \
+          .
+        
+        # Push all tags for the newly built image
+        docker push ${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/${_IMAGE_NAME} --all-tags
+      else
+        echo "Skipping build and push."
+      fi
+  waitFor: ['check-for-changes']
+
+# Step 2A: Deploy the service
+- name: '${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/gcp-terraform-build:latest'
+  id: 'deploy'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      set -e
+      gcloud secrets versions access latest --secret="${_TFVARS_SECRET_NAME}" --project="${_PROJECT_ID}" > terraform/terraform.tfvars
+      cd terraform
+      terraform init -backend-config="prefix=cloud-spanner-demo/${_PROJECT_SUFFIX}/graphrag-embedding"
+      terraform apply -auto-approve -var="git_tag=$(cat /workspace/tag)" -var="image_url=${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/${_IMAGE_NAME}"
+  waitFor: ['build-and-push']
+
+# Step 2B: Clean up old images (runs in parallel with deploy)
+- name: '${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/gcp-terraform-build:latest'
+  id: 'cleanup-images'
+  entrypoint: 'cleanup_images.sh'
+  args:
+  - '${_LOCATION}'
+  - '${_PROJECT_ID}'
+  - '${_REPOSITORY_ID}'
+  - '${_IMAGE_NAME}'
+  waitFor: ['build-and-push']
+
+images:
+- '${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/${_IMAGE_NAME}:$BUILD_ID'
+- '${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY_ID}/${_IMAGE_NAME}:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _PROJECT_ID: '${PROJECT_ID}'
+  _LOCATION: 'europe-west1'
+  _REPOSITORY_ID: 'my-docker-repo'
+  _IMAGE_NAME: 'graphrag-fn-embedding'
+  _PROJECT_SUFFIX: '' # This will be overridden by the trigger
+  _TFVARS_SECRET_NAME: 'embedding-tfvars'
+; then
         echo "Changes detected in main.py or requirements.txt. Building new image."
         echo "$BUILD_ID" > /workspace/tag
       else
