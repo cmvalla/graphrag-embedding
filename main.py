@@ -15,10 +15,17 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='%(asctime)s -
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 # Initialize the client globally to reuse connections
-client = genai.Client()
+_genai_client = None
 
 @functions_framework.http
 def embed(request):
+    global _genai_client
+
+    if _genai_client is None:
+        logging.info("Initializing genai client...")
+        _genai_client = genai.Client()
+        logging.info("genai client initialized successfully.")
+
     request_json = request.get_json(silent=True)
     if not request_json or 'text' not in request_json:
         logging.error("Bad Request: Missing 'text' in request body")
@@ -28,8 +35,7 @@ def embed(request):
     logging.info(f"Received text for embedding: {text_to_embed}")
 
     try:
-        # Use client.models.embed_content as requested
-        response = client.models.embed_content(
+        response = _genai_client.models.embed_content(
             model="gemini-embedding-001",
             contents=[text_to_embed],
             task_type="RETRIEVAL_QUERY" # Specify task type as recommended in docs
