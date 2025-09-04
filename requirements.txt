@@ -1,2 +1,4 @@
 functions-framework==3.*
 google-generativeai
+pytest
+pytest-mock
