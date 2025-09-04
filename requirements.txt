@@ -1,5 +1,4 @@
 functions-framework==3.*
-sentence-transformers
 langchain-google-genai
 langchain-core
 langchain-community
