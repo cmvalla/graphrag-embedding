@@ -2,6 +2,7 @@ import functions_framework
 import logging
 import sys
 import os
+import asyncio
 from sentence_transformers import SentenceTransformer
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
@@ -43,7 +44,13 @@ def embed(request):
     if embedding_source == 'local':
         embedding = embedding_model.encode(text_to_embed).tolist()
     elif embedding_source == 'gemini':
-        embedding = gemini_embeddings_client.embed_query(text_to_embed)
+        # Run the asynchronous embed_query in a new event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            embedding = loop.run_until_complete(gemini_embeddings_client.embed_query(text_to_embed))
+        finally:
+            loop.close()
 
     if embedding is None:
         logging.error("Failed to generate embedding.")
