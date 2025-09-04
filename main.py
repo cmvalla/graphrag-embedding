@@ -3,6 +3,7 @@ import logging
 import sys
 import os
 import google.generativeai as genai
+import asyncio
 
 # --- Boilerplate and Configuration ---
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -34,7 +35,17 @@ def embed(request):
     text_to_embed = request_json['text']
     logging.info(f"Received text for embedding: {text_to_embed}")
 
+    embedding = None
     try:
+        # Explicitly create and set an event loop for the current thread
+        # This is a workaround for grpcio/asyncio issues in some environments
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        # The embed_content call itself is synchronous, but its internal dependencies might be async
         response = _genai_client.models.embed_content(
             model="gemini-embedding-001",
             contents=[text_to_embed],
@@ -44,6 +55,11 @@ def embed(request):
     except Exception as e:
         logging.error(f"Failed to generate embedding: {e}", exc_info=True)
         return "Failed to generate embedding.", 500
+    finally:
+        # Clean up the event loop if it was created in this function
+        if 'loop' in locals() and not loop.is_running():
+            loop.close()
+
 
     logging.info(f"Generated embedding: {embedding}")
 
