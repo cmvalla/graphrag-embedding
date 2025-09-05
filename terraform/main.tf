@@ -11,8 +11,8 @@ resource "google_cloud_run_v2_service" "embedding_service" {
       }
       resources {
         limits = {
-          cpu    = "1"
-          memory = "4Gi"
+          cpu    = "0.5"
+          memory = "512Mi"
         }
       }
     }
