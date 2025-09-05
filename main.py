@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format='%(asctime)s 
 # In a production environment, use Secret Manager.
 
 # Get GCP_PROJECT from environment variables
-GCP_PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT")
+GCP_PROJECT = "spanner-demo-kid"
 
 # Configure genai with the project_id
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"), project=GCP_PROJECT)
