@@ -4,6 +4,7 @@ import sys
 import os
 import google.generativeai as genai
 import requests
+import google.cloud.secretmanager as secretmanager
 
 # --- Boilerplate and Configuration ---
 
@@ -22,9 +23,25 @@ log_level = LOG_LEVEL_MAP.get(log_level_str, logging.DEBUG)
 
 logging.basicConfig(level=log_level, stream=sys.stdout, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Initialize Secret Manager client globally
+sm_client = secretmanager.SecretManagerServiceClient()
+
 # Configure the generative AI library
-GCP_PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT")
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+# The API key will be fetched from Secret Manager
+GEMINI_API_KEY_SECRET_ID = os.environ.get("GEMINI_API_KEY_SECRET_ID")
+if GEMINI_API_KEY_SECRET_ID:
+    try:
+        gemini_api_key = sm_client.access_secret_version(request={"name": GEMINI_API_KEY_SECRET_ID}).payload.data.decode("UTF-8")
+        genai.configure(api_key=gemini_api_key)
+        logging.debug("Gemini API key fetched from Secret Manager and configured.")
+    except Exception as e:
+        logging.error(f"Failed to fetch Gemini API key from Secret Manager: {e}", exc_info=True)
+        # Fallback to environment variable if secret access fails
+        genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+        logging.warning("Falling back to GEMINI_API_KEY from environment variable.")
+else:
+    genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+    logging.warning("GEMINI_API_KEY_SECRET_ID not set. Falling back to GEMINI_API_KEY from environment variable.")
 
 @functions_framework.http
 def embed(request):
