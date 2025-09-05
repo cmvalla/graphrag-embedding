@@ -6,19 +6,25 @@ import google.generativeai as genai
 import requests
 
 # --- Boilerplate and Configuration ---
-logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format='%(asctime)s - %(levelname)s - %(message)s')
+
+LOG_LEVEL_MAP = {
+    "CRITICAL": logging.CRITICAL,
+    "ERROR": logging.ERROR,
+    "WARNING": logging.WARNING,
+    "INFO": logging.INFO,
+    "DEBUG": logging.DEBUG,
+    "NOTSET": logging.NOTSET,
+}
+
+# Get log level from environment variable, default to DEBUG
+log_level_str = os.environ.get("LOG_LEVEL", "DEBUG").upper()
+log_level = LOG_LEVEL_MAP.get(log_level_str, logging.DEBUG)
+
+logging.basicConfig(level=log_level, stream=sys.stdout, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Configure the generative AI library
-# The API key should be provided via an environment variable or Secret Manager
-# For Cloud Functions, it's often automatically handled if the service account has permissions
-# or if an API key is explicitly set as an environment variable.
-# In a production environment, use Secret Manager.
-
-# Get GCP_PROJECT from environment variables
 GCP_PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT")
-
-# Configure genai with the project_id
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"), project=GCP_PROJECT)
 
 @functions_framework.http
 def embed(request):
@@ -43,32 +49,40 @@ def embed(request):
     request_json = request.get_json(silent=True)
     logging.debug(f"Request JSON: {request_json}")
 
-    if not request_json or 'text' not in request_json:
-        logging.error("Bad Request: Missing 'text' in request body")
-        return 'Bad Request: Missing "text" in request body', 400
+    if not request_json:
+        logging.error("Bad Request: Request body is empty.")
+        return 'Bad Request: Request body is empty.', 400
 
-    text_to_embed = request_json['text']
-    logging.debug(f"Text to embed: {text_to_embed}")
+    # Determine if input is a single text or an array of texts
+    if 'text' in request_json:
+        texts_to_embed = [request_json['text']]
+    elif 'texts' in request_json and isinstance(request_json['texts'], list):
+        texts_to_embed = request_json['texts']
+    else:
+        logging.error("Bad Request: Missing 'text' or 'texts' in request body.")
+        return 'Bad Request: Missing "text" or "texts" in request body.', 400
+
+    # Get task_type from request, default to RETRIEVAL_QUERY
+    task_type = request_json.get('task_type', "RETRIEVAL_QUERY")
+
+    logging.debug(f"Texts to embed: {texts_to_embed}")
+    logging.debug(f"Task type: {task_type}")
 
     try:
         logging.debug("Calling genai.embed_content...")
-        # The endpoint used by google.generativeai is usually inferred or default.
-        # It's not directly exposed as a configurable parameter in embed_content.
-        # However, we can log the model name being used.
-        logging.debug(f"Embedding model: models/embedding-001")
         response = genai.embed_content(
             model="models/embedding-001",
-            content=text_to_embed,
-            task_type="RETRIEVAL_QUERY" # Specify task type as recommended in docs
+            contents=texts_to_embed,
+            task_type=task_type
         )
         logging.debug(f"Response from genai.embed_content: {response}")
-        embedding = response['embedding']
-        logging.debug(f"Extracted embedding: {embedding}")
+        embeddings = response['embedding']
+        logging.debug(f"Extracted embeddings: {embeddings}")
     except Exception as e:
         logging.error(f"Failed to generate embedding: {e}", exc_info=True)
         return "Failed to generate embedding.", 500
 
-    logging.debug(f"Generated embedding: {embedding}")
+    logging.debug(f"Generated embeddings: {embeddings}")
     logging.debug("Returning response.")
 
-    return {'embedding': embedding}, 200
+    return {'embeddings': embeddings}, 200
