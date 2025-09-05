@@ -42,3 +42,19 @@ def test_embed_genai_error_mocked(mock_request):
         response, status_code = embed(mock_request)
         assert status_code == 500
         assert "Failed to generate embedding." in response
+
+def test_embed_authentication_error(mock_request):
+    # Mock the genai.embed_content to simulate a PermissionDenied error
+    with patch("google.generativeai.embed_content") as mock_embed_content:
+        # Create a mock PermissionDenied exception
+        mock_exception = MagicMock()
+        mock_exception.reason = "ACCESS_TOKEN_SCOPE_INSUFFICIENT"
+        mock_exception.domain = "googleapis.com"
+        mock_exception.method = "google.ai.generativelanguage.v1beta.GenerativeService.EmbedContent"
+        mock_embed_content.side_effect = Exception("403 Request had insufficient authentication scopes.") # Simulate the error message
+
+        response, status_code = embed(mock_request)
+        assert status_code == 500
+        assert "Failed to generate embedding." in response
+        # In a real scenario, you might parse the response to confirm the specific error message
+        # but for this test, we are just checking the 500 status and generic error message.
