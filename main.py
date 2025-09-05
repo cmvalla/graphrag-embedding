@@ -24,7 +24,7 @@ logging.basicConfig(level=log_level, stream=sys.stdout, format='%(asctime)s - %(
 
 # Configure the generative AI library
 GCP_PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT")
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"), project=GCP_PROJECT)
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 @functions_framework.http
 def embed(request):
