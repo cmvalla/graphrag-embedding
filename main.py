@@ -16,8 +16,8 @@ def embed(request):
     logging.debug("Received request.")
     
     # Log environment variables related to project and credentials
-    logging.debug(f"GOOGLE_CLOUD_PROJECT: {os.environ.get("GOOGLE_CLOUD_PROJECT")}")
-    logging.debug(f"GOOGLE_APPLICATION_CREDENTIALS: {os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")}")
+    logging.debug(f'GOOGLE_CLOUD_PROJECT: {os.environ.get("GOOGLE_CLOUD_PROJECT")}')
+    logging.debug(f'GOOGLE_APPLICATION_CREDENTIALS: {os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")}')
 
     # Attempt to retrieve and log the service account email from the metadata server
     try:
