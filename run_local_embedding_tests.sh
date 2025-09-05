@@ -28,7 +28,7 @@ echo "GOOGLE_APPLICATION_CREDENTIALS set to: ${GOOGLE_APPLICATION_CREDENTIALS}"
 echo "Running local tests..."
 # Run your pytest command
 source .venv/bin/activate
-pytest test_main.py
+/Users/carlovalla/Library/Python/3.9/bin/pytest functions/graphrag-embedding/test_main.py
 
 # Unset the environment variable and delete the key file after tests
 echo "Cleaning up..."

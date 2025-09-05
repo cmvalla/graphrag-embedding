@@ -15,6 +15,10 @@ resource "google_cloud_run_v2_service" "embedding_service" {
           memory = "512Mi"
         }
       }
+      env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
     }
     scaling {
       max_instance_count = 5
