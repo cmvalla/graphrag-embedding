@@ -23,3 +23,8 @@ variable "image_url" {
   description = "The URL of the Docker image."
   type        = string
 }
+
+variable "gemini_api_key_secret_id" {
+  description = "The Secret Manager ID for the Gemini API key."
+  type        = string
+}
