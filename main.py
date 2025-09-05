@@ -9,7 +9,16 @@ import requests
 logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Configure the generative AI library
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+# The API key should be provided via an environment variable or Secret Manager
+# For Cloud Functions, it's often automatically handled if the service account has permissions
+# or if an API key is explicitly set as an environment variable.
+# In a production environment, use Secret Manager.
+
+# Get GCP_PROJECT from environment variables
+GCP_PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT")
+
+# Configure genai with the project_id
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"), project=GCP_PROJECT)
 
 @functions_framework.http
 def embed(request):
