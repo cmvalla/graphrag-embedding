@@ -72,7 +72,7 @@ def embed(request):
         logging.debug("Calling genai.embed_content...")
         response = genai.embed_content(
             model="models/embedding-001",
-            contents=texts_to_embed,
+            content=texts_to_embed,
             task_type=task_type
         )
         logging.debug(f"Response from genai.embed_content: {response}")
