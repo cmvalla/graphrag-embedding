@@ -3,6 +3,7 @@ import logging
 import sys
 import os
 import google.generativeai as genai
+from langchain_community.embeddings import SentenceTransformerEmbeddings, HuggingFaceEmbeddings, VoyageAIEmbeddings, CohereEmbeddings, TaskType
 
 
 EMBEDDING_DIMENSION = 768 # Default embedding dimension for models/embedding-001
