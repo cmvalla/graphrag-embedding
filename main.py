@@ -5,6 +5,10 @@ import os
 import google.generativeai as genai
 from langchain_community.embeddings import SentenceTransformerEmbeddings, HuggingFaceEmbeddings, CohereEmbeddings
 
+class TaskType:
+    RETRIEVAL_DOCUMENT = "retrieval_document"
+    RETRIEVAL_QUERY = "retrieval_query"
+
 
 EMBEDDING_DIMENSION = 768 # Default embedding dimension for models/embedding-001
 import requests
