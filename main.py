@@ -8,6 +8,12 @@ from langchain_community.embeddings import SentenceTransformerEmbeddings, Huggin
 class TaskType:
     RETRIEVAL_DOCUMENT = "retrieval_document"
     RETRIEVAL_QUERY = "retrieval_query"
+    SEMANTIC_SIMILARITY = "semantic_similarity"
+    CLASSIFICATION = "classification"
+    CLUSTERING = "clustering"
+    QUESTION_ANSWERING = "question_answering"
+    FACT_VERIFICATION = "fact_verification"
+    CODE_RETRIEVAL_QUERY = "code_retrieval_query"
 
 
 EMBEDDING_DIMENSION = 768 # Default embedding dimension for models/embedding-001
