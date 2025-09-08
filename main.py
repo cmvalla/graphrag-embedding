@@ -3,7 +3,7 @@ import logging
 import sys
 import os
 import google.generativeai as genai
-from google.generativeai import TaskType
+
 
 EMBEDDING_DIMENSION = 768 # Default embedding dimension for models/embedding-001
 import requests
