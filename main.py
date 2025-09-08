@@ -3,6 +3,9 @@ import logging
 import sys
 import os
 import google.generativeai as genai
+from google.generativeai import TaskType
+
+EMBEDDING_DIMENSION = 768 # Default embedding dimension for models/embedding-001
 import requests
 import google.cloud.secretmanager as secretmanager
 
@@ -79,27 +82,55 @@ def embed(request):
         logging.error("Bad Request: Missing 'text' or 'texts' in request body.")
         return 'Bad Request: Missing "text" or "texts" in request body.', 400
 
-    # Get task_type from request, default to RETRIEVAL_QUERY
-    task_type = request_json.get('task_type', "RETRIEVAL_QUERY")
+    # Get desired embedding types from request, default to ["semantic_search"]
+    # This allows requesting multiple types of embeddings in one call
+    embedding_types_requested = request_json.get('embedding_types', ["semantic_search"])
+    if not isinstance(embedding_types_requested, list):
+        logging.error("Bad Request: 'embedding_types' must be a list.")
+        return 'Bad Request: \'embedding_types\' must be a list.', 400
 
-    logging.debug(f"Texts to embed: {texts_to_embed}")
-    logging.debug(f"Task type: {task_type}")
+    # Define mapping from requested embedding type to genai.TaskType
+    TASK_TYPE_MAPPING = {
+        "clustering": TaskType.RETRIEVAL_DOCUMENT,
+        "semantic_search": TaskType.RETRIEVAL_QUERY,
+        # Add other mappings as needed
+    }
 
-    try:
-        logging.debug("Calling genai.embed_content...")
-        response = genai.embed_content(
-            model="models/embedding-001",
-            content=texts_to_embed,
-            task_type=task_type
-        )
-        logging.debug(f"Response from genai.embed_content: {response}")
-        embeddings = response['embedding']
-        logging.debug(f"Extracted embeddings: {embeddings}")
-    except Exception as e:
-        logging.error(f"Failed to generate embedding: {e}", exc_info=True)
-        return "Failed to generate embedding.", 500
+    all_embeddings = {}
+    for embed_type in embedding_types_requested:
+        task_type = TASK_TYPE_MAPPING.get(embed_type)
+        if task_type is None:
+            logging.warning(f"Unknown embedding type requested: {embed_type}. Skipping.")
+            continue
 
-    logging.debug(f"Generated embeddings: {embeddings}")
+        logging.debug(f"Texts to embed for {embed_type}: {texts_to_embed}")
+        logging.debug(f"Task type for {embed_type}: {task_type}")
+
+        try:
+            logging.debug(f"Calling genai.embed_content for {embed_type}...")
+            response = genai.embed_content(
+                model="models/embedding-001",
+                content=texts_to_embed,
+                task_type=task_type
+            )
+            logging.debug(f"Response from genai.embed_content for {embed_type}: {response}")
+            
+            # The 'embedding' key in the response from genai.embed_content is always singular
+            # and contains a list of embeddings (one for each text in content).
+            embeddings_list = response['embedding'] 
+            all_embeddings[embed_type] = embeddings_list
+            logging.debug(f"Extracted {len(embeddings_list)} embeddings for {embed_type}.")
+        except Exception as e:
+            logging.error(f"Failed to generate {embed_type} embedding: {e}", exc_info=True)
+            # Continue to try other embedding types even if one fails
+            all_embeddings[embed_type] = [[0.0] * EMBEDDING_DIMENSION] * len(texts_to_embed) # Return zero embeddings for failed type
+
+    if not all_embeddings:
+        logging.error("No embeddings could be generated for any requested type.")
+        return "No embeddings could be generated.", 500
+
+    logging.debug(f"Generated all embeddings: {all_embeddings}")
     logging.debug("Returning response.")
 
-    return {'embeddings': embeddings}, 200
+    return {'embeddings': all_embeddings}, 200
+
