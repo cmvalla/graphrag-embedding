@@ -25,7 +25,16 @@ The embedding function is deployed as a Google Cloud Run service, making it serv
 *   **`functions-framework`:**
     *   **Rationale:** Used to wrap the Python application as a Cloud Function, providing a lightweight and standardized way to deploy HTTP-triggered functions on Cloud Run.
 *   **`langchain_community` for Embeddings:**
-    *   **Rationale:** Provides a unified interface for various embedding models, including Google's Gemini models. This allows for easy swapping of embedding providers without significant code changes. The `TaskType` enum (or its local placeholder) is used to leverage task-specific embedding capabilities, which can improve the quality of embeddings for particular use cases (e.g., better search results when query embeddings are generated with `retrieval_query`).
+    *   **Rationale:** Provides a unified interface for various embedding models, including Google's Gemini models. This allows for easy swapping of embedding providers without significant code changes. The `task_type` parameter (which maps to `TaskType` internally) is used to leverage task-specific embedding capabilities, which can significantly improve the quality and relevance of embeddings for particular use cases.
+    *   **`TaskType` Scenarios:**
+        *   `RETRIEVAL_QUERY`: Used for embedding search queries. The model is optimized to produce embeddings that are effective at finding relevant documents.
+        *   `RETRIEVAL_DOCUMENT`: Used for embedding documents that are intended to be retrieved by search queries. The model is optimized to produce embeddings that are easily discoverable by retrieval queries.
+        *   `SEMANTIC_SIMILARITY`: Used for general-purpose semantic similarity tasks, where the goal is to find texts that are semantically close to each other.
+        *   `CLASSIFICATION`: Used for embedding texts that will be used in classification tasks. The model is optimized to produce embeddings that highlight features relevant for categorizing text.
+        *   `CLUSTERING`: Used for embedding texts that will be grouped into clusters. The model is optimized to produce embeddings that facilitate the formation of meaningful clusters.
+        *   `QUESTION_ANSWERING`: Used for embedding questions or passages in a question-answering context. The model is optimized to capture the nuances of questions and their potential answers.
+        *   `FACT_VERIFICATION`: Used for embedding statements or evidence in fact-checking scenarios. The model is optimized to identify factual consistency or inconsistency.
+        *   `CODE_RETRIEVAL_QUERY`: Specifically designed for embedding code snippets that will be used as queries to retrieve relevant code.
 *   **Google Secret Manager for API Key:**
     *   **Rationale:** Enhances security by storing sensitive API keys outside the codebase and environment variables. It allows for centralized management and rotation of secrets. The fallback to environment variables provides flexibility for local development or environments where Secret Manager might not be immediately accessible.
 *   **Error Handling with Retries and Exponential Backoff:**
