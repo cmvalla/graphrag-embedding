@@ -102,8 +102,9 @@ def embed(request):
 
     # Define mapping from requested embedding type to genai.TaskType
     TASK_TYPE_MAPPING = {
-        "clustering": TaskType.RETRIEVAL_DOCUMENT,
-        "semantic_search": TaskType.RETRIEVAL_QUERY,
+        "clustering": TaskType.CLUSTERING,
+        "semantic_search": TaskType.RETRIEVAL_DOCUMENT,
+        "semantic_query": TaskType.RETRIEVAL_QUERY,
         # Add other mappings as needed
     }
 
