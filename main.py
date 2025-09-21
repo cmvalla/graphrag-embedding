@@ -19,6 +19,7 @@ class TaskType:
 EMBEDDING_DIMENSION = 768 # Default embedding dimension for models/embedding-001
 import requests
 import google.cloud.secretmanager as secretmanager
+import uuid
 
 # --- Boilerplate and Configuration ---
 
@@ -59,11 +60,15 @@ else:
 
 @functions_framework.http
 def embed(request):
-    logging.debug("Received request.")
+    request_json = request.get_json(silent=True)
+    
+    invocation_id = request_json.get('invocation_id') if request_json and 'invocation_id' in request_json else uuid.uuid4().hex
+    
+    logging.debug(f"[{invocation_id}] Received request.")
     
     # Log environment variables related to project and credentials
-    logging.debug(f'GOOGLE_CLOUD_PROJECT: {os.environ.get("GOOGLE_CLOUD_PROJECT")}')
-    logging.debug(f'GOOGLE_APPLICATION_CREDENTIALS: {os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")}')
+    logging.debug(f'[{invocation_id}] GOOGLE_CLOUD_PROJECT: {os.environ.get("GOOGLE_CLOUD_PROJECT")}')
+    logging.debug(f'[{invocation_id}] GOOGLE_APPLICATION_CREDENTIALS: {os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")}')
 
     # Attempt to retrieve and log the service account email from the metadata server
     try:
@@ -71,17 +76,16 @@ def embed(request):
         headers = {"Metadata-Flavor": "Google"}
         response = requests.get(metadata_server_url, headers=headers, timeout=1)
         if response.status_code == 200:
-            logging.debug(f"Running as service account: {response.text}")
+            logging.debug(f"[{invocation_id}] Running as service account: {response.text}")
         else:
-            logging.debug(f"Could not retrieve service account email from metadata server. Status: {response.status_code}")
+            logging.debug(f"[{invocation_id}] Could not retrieve service account email from metadata server. Status: {response.status_code}")
     except requests.exceptions.RequestException as e:
-        logging.debug(f"Error retrieving service account email from metadata server: {e}")
+        logging.debug(f"[{invocation_id}] Error retrieving service account email from metadata server: {e}")
 
-    request_json = request.get_json(silent=True)
-    logging.debug(f"Request JSON: {request_json}")
+    logging.debug(f"[{invocation_id}] Request JSON: {request_json}")
 
     if not request_json:
-        logging.error("Bad Request: Request body is empty.")
+        logging.error(f"[{invocation_id}] Bad Request: Request body is empty.")
         return 'Bad Request: Request body is empty.', 400
 
     # Determine if input is a single text or an array of texts
@@ -90,14 +94,14 @@ def embed(request):
     elif 'texts' in request_json and isinstance(request_json['texts'], list):
         texts_to_embed = request_json['texts']
     else:
-        logging.error("Bad Request: Missing 'text' or 'texts' in request body.")
+        logging.error(f"[{invocation_id}] Bad Request: Missing 'text' or 'texts' in request body.")
         return 'Bad Request: Missing "text" or "texts" in request body.', 400
 
     # Get desired embedding types from request, default to ["semantic_search"]
     # This allows requesting multiple types of embeddings in one call
     embedding_types_requested = request_json.get('embedding_types', ["semantic_search"])
     if not isinstance(embedding_types_requested, list):
-        logging.error("Bad Request: 'embedding_types' must be a list.")
+        logging.error(f"[{invocation_id}] Bad Request: 'embedding_types' must be a list.")
         return 'Bad Request: \'embedding_types\' must be a list.', 400
 
     # Define mapping from requested embedding type to genai.TaskType
@@ -112,41 +116,41 @@ def embed(request):
     
     # Generate semantic_search embeddings
     try:
-        logging.debug(f"Calling genai.embed_content for semantic_search...")
+        logging.debug(f"[{invocation_id}] Calling genai.embed_content for semantic_search...")
         response = genai.embed_content(
             model="models/embedding-001",
             content=texts_to_embed,
             task_type=TaskType.RETRIEVAL_DOCUMENT # Use RETRIEVAL_DOCUMENT for semantic search
         )
-        logging.debug(f"Response from genai.embed_content for semantic_search: {response}")
+        logging.debug(f"[{invocation_id}] Response from genai.embed_content for semantic_search: {response}")
         all_embeddings["semantic_search"] = response['embedding']
-        logging.debug(f"Extracted {len(response['embedding'])} embeddings for semantic_search.")
+        logging.debug(f"[{invocation_id}] Extracted {len(response['embedding'])} embeddings for semantic_search.")
     except Exception as e:
-        logging.error(f"Failed to generate semantic_search embedding: {e}", exc_info=True)
+        logging.error(f"[{invocation_id}] Failed to generate semantic_search embedding: {e}", exc_info=True)
         all_embeddings["semantic_search"] = [[0.0] * EMBEDDING_DIMENSION] * len(texts_to_embed)
 
     # Generate clustering embeddings if requested
     if "clustering" in embedding_types_requested:
         try:
-            logging.debug(f"Calling genai.embed_content for clustering...")
+            logging.debug(f"[{invocation_id}] Calling genai.embed_content for clustering...")
             response = genai.embed_content(
                 model="models/embedding-001",
                 content=texts_to_embed,
                 task_type=TaskType.CLUSTERING # Use CLUSTERING for clustering
             )
-            logging.debug(f"Response from genai.embed_content for clustering: {response}")
+            logging.debug(f"[{invocation_id}] Response from genai.embed_content for clustering: {response}")
             all_embeddings["clustering"] = response['embedding']
-            logging.debug(f"Extracted {len(response['embedding'])} embeddings for clustering.")
+            logging.debug(f"[{invocation_id}] Extracted {len(response['embedding'])} embeddings for clustering.")
         except Exception as e:
-            logging.error(f"Failed to generate clustering embedding: {e}", exc_info=True)
+            logging.error(f"[{invocation_id}] Failed to generate clustering embedding: {e}", exc_info=True)
             all_embeddings["clustering"] = [[0.0] * EMBEDDING_DIMENSION] * len(texts_to_embed)
 
     if not all_embeddings:
-        logging.error("No embeddings could be generated for any requested type.")
+        logging.error(f"[{invocation_id}] No embeddings could be generated for any requested type.")
         return "No embeddings could be generated.", 500
 
-    logging.debug(f"Generated all embeddings: {all_embeddings}")
-    logging.debug("Returning response.")
+    logging.debug(f"[{invocation_id}] Generated all embeddings: {all_embeddings}")
+    logging.debug(f"[{invocation_id}] Returning response.")
 
     return {'embeddings': all_embeddings}, 200
 
