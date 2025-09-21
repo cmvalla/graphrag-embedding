@@ -109,33 +109,37 @@ def embed(request):
     }
 
     all_embeddings = {}
-    for embed_type in embedding_types_requested:
-        task_type = TASK_TYPE_MAPPING.get(embed_type)
-        if task_type is None:
-            logging.warning(f"Unknown embedding type requested: {embed_type}. Skipping.")
-            continue
+    
+    # Generate semantic_search embeddings
+    try:
+        logging.debug(f"Calling genai.embed_content for semantic_search...")
+        response = genai.embed_content(
+            model="models/embedding-001",
+            content=texts_to_embed,
+            task_type=TaskType.RETRIEVAL_DOCUMENT # Use RETRIEVAL_DOCUMENT for semantic search
+        )
+        logging.debug(f"Response from genai.embed_content for semantic_search: {response}")
+        all_embeddings["semantic_search"] = response['embedding']
+        logging.debug(f"Extracted {len(response['embedding'])} embeddings for semantic_search.")
+    except Exception as e:
+        logging.error(f"Failed to generate semantic_search embedding: {e}", exc_info=True)
+        all_embeddings["semantic_search"] = [[0.0] * EMBEDDING_DIMENSION] * len(texts_to_embed)
 
-        logging.debug(f"Texts to embed for {embed_type}: {texts_to_embed}")
-        logging.debug(f"Task type for {embed_type}: {task_type}")
-
+    # Generate clustering embeddings if requested
+    if "clustering" in embedding_types_requested:
         try:
-            logging.debug(f"Calling genai.embed_content for {embed_type}...")
+            logging.debug(f"Calling genai.embed_content for clustering...")
             response = genai.embed_content(
                 model="models/embedding-001",
                 content=texts_to_embed,
-                task_type=task_type
+                task_type=TaskType.CLUSTERING # Use CLUSTERING for clustering
             )
-            logging.debug(f"Response from genai.embed_content for {embed_type}: {response}")
-            
-            # The 'embedding' key in the response from genai.embed_content is always singular
-            # and contains a list of embeddings (one for each text in content).
-            embeddings_list = response['embedding'] 
-            all_embeddings[embed_type] = embeddings_list
-            logging.debug(f"Extracted {len(embeddings_list)} embeddings for {embed_type}.")
+            logging.debug(f"Response from genai.embed_content for clustering: {response}")
+            all_embeddings["clustering"] = response['embedding']
+            logging.debug(f"Extracted {len(response['embedding'])} embeddings for clustering.")
         except Exception as e:
-            logging.error(f"Failed to generate {embed_type} embedding: {e}", exc_info=True)
-            # Continue to try other embedding types even if one fails
-            all_embeddings[embed_type] = [[0.0] * EMBEDDING_DIMENSION] * len(texts_to_embed) # Return zero embeddings for failed type
+            logging.error(f"Failed to generate clustering embedding: {e}", exc_info=True)
+            all_embeddings["clustering"] = [[0.0] * EMBEDDING_DIMENSION] * len(texts_to_embed)
 
     if not all_embeddings:
         logging.error("No embeddings could be generated for any requested type.")
