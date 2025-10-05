@@ -135,6 +135,7 @@ def embed(request):
             logging.debug(f"[{invocation_id}] Response from genai.embed_content for {embed_type}: {response}")
             all_embeddings[embed_type] = response['embedding']
             logging.debug(f"[{invocation_id}] Extracted {len(response['embedding'])} embeddings for {embed_type}.")
+            logging.debug(f"[{invocation_id}] Embedding shape for {embed_type}: {len(response['embedding'][0])}")
         except Exception as e:
             logging.error(f"[{invocation_id}] Failed to generate {embed_type} embedding: {e}", exc_info=True)
             all_embeddings[embed_type] = [[0.0] * EMBEDDING_DIMENSION] * len(texts_to_embed)
